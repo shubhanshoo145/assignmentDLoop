@@ -1,0 +1,42 @@
+version: '3'
+volumes:
+  mongo:
+  redpanda:
+networks:
+  default:
+    driver: bridge
+    # prevent conflict with openVPN connection, use dedicated subnet
+    ipam:
+      config:
+        - subnet: 172.16.57.0/24
+services:
+  mongo:
+    image: mongo:4.2
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo:/data/db
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+  streetservice:
+    build: ./
+    user: 'node'
+    working_dir: /home/node/app
+    depends_on:
+      - mongo
+      - rabbitmq
+    environment:
+      - CITY=${CITY}
+      - QUEUE_URL=${QUEUE_URL}
+      - DB_URL=${DB_URL}
+    volumes:
+      - ./:/home/node/app/:cached
+    ports:
+      - '4700:4700'
+      - '9090:9090'
+    command: "npm run dev"
